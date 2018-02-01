@@ -12,11 +12,11 @@ def create_pool(loop,**kw):
 	__pool = yield from aiomysql.create_pool(
 		host=kw.get('host','localhost'),
 		port=kw.get('port',3306),
-		user=kw.get['user'],
+		user=kw['user'],
 		password=kw['password'],
 		db=kw['db'],
 		charset=kw.get('charset','utf8'),
-		autocommit=kw.get('autocommit','True'),
+		autocommit=kw.get('autocommit',True),
 		maxsize=kw.get('maxsize',10),
 		minsize=kw.get('minsize',1),
 		loop=loop
@@ -70,7 +70,7 @@ class ModelMetaclass(type):
 		for k,v in attrs.items():
 			if isinstance(v,Field):
 				logging.info('found mapping: %s ==> %s' % (k,v))
-				mapping[k] = v
+				mappings[k] = v
 				if v.primary_key:
 					if primaryKey:
 						raise RuntimeErrror('Duplicate primary key for field: %s' % k)
@@ -174,10 +174,10 @@ class Model(dict,metaclass=ModelMetaclass):
 
 	@asyncio.coroutine
 	def save(self):
-		args = list(map(self.getValueOrDefault,self.__field__))
+		args = list(map(self.getValueOrDefault,self.__fields__))
 		args.append(self.getValueOrDefault(self.__primary_key__))
 		rows = yield from execute(self.__insert__,args)
-		if row != 1:
+		if rows != 1:
 			logging.warn('failed to insert record:affected rows:%s'%rows)
 
 	@asyncio.coroutine
@@ -202,12 +202,12 @@ class Model(dict,metaclass=ModelMetaclass):
 class Field(object):
 	def __init__(self,name,column_type,primary_key,default):
 		self.name = name
-		self.column_type = connection
+		self.column_type = column_type
 		self.primary_key = primary_key
 		self.default = default
 
 	def __str__(self):
-		return '<%s,%s:%s>' % (self.__class__.name,self.column_type,self.name)
+		return '<%s,%s:%s>' % (self.__class__.__name__,self.column_type,self.name)
 
 
 class StringField(Field):
